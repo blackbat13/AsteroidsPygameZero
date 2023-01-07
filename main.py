@@ -1,168 +1,169 @@
 import pgzrun
 import random
 import pygame
-import shelve
+
+
+""" CONFIGURATION """
 
 WIDTH = 600
 HEIGHT = 900
 
-statek = Actor("statek")
-statek.x = WIDTH / 2
-statek.y = HEIGHT - 60
-statek.px = 5
-statek.zycia = 3
-statek.strzaly = 1
-statek.punkty = 0
+""" VARIABLES """
 
-meteory = []
+player = Actor("ship")
+player.x = WIDTH / 2
+player.y = HEIGHT - 60
+player.vx = 5
+player.lifes = 3
+player.ammo = 1
+player.points = 0
 
-lasery = []
+meteors_list = []
 
-zycia = []
+lasers_list = []
 
-wyniki = shelve.open("wyniki")
-if "highscore" not in wyniki:
-    wyniki["highscore"] = 0
-wyniki.close()
+lifes_list = []
+
+
+""" DRAW """
+
 
 def draw():
-    screen.blit("tlo", (0, 0))
-    draw_meteory()
-    draw_lasery()
-    statek.draw()
-    draw_punkty()
-    draw_zycia()
+    screen.blit("bg", (0, 0))
 
-    if statek.zycia == 0:
-        screen.draw.text("Game Over", center=(WIDTH / 2, HEIGHT / 2), fontsize=90)
+    draw_actors_list(meteors_list)
+    draw_actors_list(lasers_list)
+    draw_actors_list(lifes_list)
 
-        wyniki = shelve.open("wyniki")
-        highscore = wyniki["highscore"]
-        wyniki.close()
+    player.draw()
 
-        screen.draw.text("Best: " + str(highscore), center=(WIDTH / 2, HEIGHT / 2 + 80), fontsize = 90, color="yellow")
+    screen.draw.text(str(player.points), center=(
+        WIDTH / 2, 20), fontsize=50, color="yellow")
 
-
-def draw_punkty():
-    screen.draw.text(str(statek.punkty), center=(WIDTH / 2, 20), fontsize=50, color="yellow")
+    if player.lifes == 0:
+        screen.draw.text("Game Over", center=(
+            WIDTH / 2, HEIGHT / 2), fontsize=90)
 
 
-def draw_zycia():
-    for st in zycia:
-        st.draw()
+def draw_actors_list(actors_list):
+    for actor in actors_list:
+        actor.draw()
 
 
-def draw_meteory():
-    for met in meteory:
-        met.draw()
-
-
-def draw_lasery():
-    for las in lasery:
-        las.draw()
+""" UPDATE """
 
 
 def update():
-    if statek.zycia == 0:
+    if player.lifes == 0:
         return
 
-    mysz_x, mysz_y = pygame.mouse.get_pos()
-    if mysz_x < statek.x:
-        statek.x -= statek.px
-    if mysz_x > statek.x:
-        statek.x += statek.px
-
     if random.randint(0, 250) <= 1:
-        dodaj_meteor()
+        add_meteor()
 
-    update_meteory()
-    update_lasery()
-    update_trafienia()
+    update_player()
+    update_meteors()
+    update_lasers()
+    update_hits()
 
 
-def update_meteory():
-    for met in meteory[:]:
-        met.y += met.py
-        met.angle += met.pa
-        if met.y > HEIGHT + 50:
-            meteory.remove(met)
+def update_player():
+    mouse_x, mouse_y = pygame.mouse.get_pos()
 
-        if met.colliderect(statek):
-            statek.zycia -= 1
-            zycia.pop()
-            meteory.remove(met)
-            if statek.zycia > 0:
-                sounds.tarcza.play()
+    if mouse_x < player.x:
+        player.x -= player.vx
+
+    if mouse_x > player.x:
+        player.x += player.vx
+
+
+def update_meteors():
+    for meteor in meteors_list[:]:
+        meteor.y += meteor.vy
+        meteor.angle += meteor.va
+
+        if meteor.y > HEIGHT + 50:
+            meteors_list.remove(meteor)
+
+        if meteor.colliderect(player):
+            player.lifes -= 1
+            lifes_list.pop()
+            meteors_list.remove(meteor)
+            if player.lifes > 0:
+                sounds.shield.play()
             else:
-                sounds.eksplozja.play()
+                sounds.explosion.play()
                 sounds.game_over.play()
                 music.fadeout(1)
 
-                wyniki = shelve.open("wyniki")
-                if statek.punkty > wyniki["highscore"]:
-                    wyniki["highscore"] = statek.punkty
-                wyniki.close()
+
+def update_lasers():
+    for laser in lasers_list[:]:
+        laser.y += laser.vy
+
+        if laser.y < -laser.height:
+            lasers_list.remove(laser)
 
 
-def update_lasery():
-    for las in lasery[:]:
-        las.y += las.py
+def update_hits():
+    for laser in lasers_list[:]:
+        for meteor in meteors_list[:]:
+            if laser.colliderect(meteor):
+                lasers_list.remove(laser)
+                meteors_list.remove(meteor)
+                player.points += 10
+                sounds.hit.play()
+                return
 
-        if las.y < -las.height:
-            lasery.remove(las)
 
-
-def update_trafienia():
-    for las in lasery[:]:
-        for met in meteory[:]:
-            if las.colliderect(met):
-                lasery.remove(las)
-                meteory.remove(met)
-                statek.punkty += 10
-                sounds.trafienie.play()
-                break
+""" EVENTS """
 
 
 def on_mouse_down():
-    if statek.strzaly > 0:
-        dodaj_laser()
-        statek.strzaly -= 1
-        clock.schedule(dodaj_strzal, 1)
+    if player.ammo > 0:
+        add_laser()
+        player.ammo -= 1
+        clock.schedule(add_ammo, 1)
         sounds.laser.play()
 
 
-def dodaj_laser():
+""" HELPERS """
+
+
+def add_laser():
     laser = Actor("laser")
-    laser.x = statek.x
-    laser.y = statek.y
-    laser.py = -8
-    lasery.append(laser)
+    laser.x = player.x
+    laser.y = player.y
+    laser.vy = -8
+    lasers_list.append(laser)
 
 
-def dodaj_meteor():
-    grafika = random.choice(["meteor1", "meteor2", "meteor3", "meteor4"])
-    met = Actor(grafika)
-    met.x = random.randint(20, WIDTH - 20)
-    met.y = -10
-    met.py = random.randint(2, 10)
-    met.pa = random.randint(-5, 5)
-    meteory.append(met)
+def add_meteor():
+    image = random.choice(["meteor1", "meteor2", "meteor3", "meteor4"])
+    meteor = Actor(image)
+    meteor.x = random.randint(20, WIDTH - 20)
+    meteor.y = -10
+    meteor.vy = random.randint(2, 10)
+    meteor.va = random.randint(-5, 5)
+    meteors_list.append(meteor)
 
 
-def dodaj_strzal():
-    statek.strzaly += 1
+def add_ammo():
+    player.ammo += 1
 
 
-def utworz_zycia():
-    for i in range(statek.zycia):
-        st = Actor("zycie")
-        st.x = st.width / 2 + i * st.width
-        st.y = st.height / 2
-        zycia.append(st)
+""" INITIALIZATION """
+
+
+def init_lifes():
+    for i in range(player.lifes):
+        life = Actor("life")
+        life.x = life.width / 2 + i * life.width
+        life.y = life.height / 2
+        lifes_list.append(life)
 
 
 pygame.mouse.set_visible(False)
-utworz_zycia()
+init_lifes()
 
 music.play("space")
 music.set_volume(0.3)

@@ -1,5 +1,6 @@
-import pgzrun
 import random
+
+import pgzrun
 import pygame
 
 

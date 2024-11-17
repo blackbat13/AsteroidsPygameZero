@@ -1,6 +1,8 @@
+import random
+
 import pgzrun
 import pygame
-import random
+from pgzhelper import *
 
 
 """CONFIGURATION"""
@@ -77,7 +79,7 @@ def update_asteroids():
         asteroid.y += asteroid.vy
         if asteroid.y > HEIGHT + 50:
             asteroids_list.remove(asteroid)
-        elif asteroid.colliderect(ship):
+        elif asteroid.collide_pixel(ship):
             ship.lifes -= 1
             asteroids_list.remove(asteroid)
             if ship.lifes > 0:
@@ -96,7 +98,7 @@ def update_lasers():
 def update_lasers_hits():
     for laser in lasers_list[:]:
         for asteroid in asteroids_list[:]:
-            if laser.colliderect(asteroid):
+            if laser.collide_pixel(asteroid):
                 lasers_list.remove(laser)
                 asteroids_list.remove(asteroid)
                 ship.points += 1
@@ -112,6 +114,8 @@ def add_asteroid():
     asteroid.x = random.randint(20, WIDTH-20)
     asteroid.y = -10
     asteroid.vy = random.randint(2, 10)
+    asteroid.scale = random.uniform(0.5, 1.5)
+    asteroid.angle = random.randint(0, 360)
     asteroids_list.append(asteroid)
 
 
